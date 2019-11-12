@@ -1,7 +1,7 @@
-from app.app_create import app
 from app.models import User, db
+from app import create_app
 
-app
+app = create_app()
 
 
 @app.shell_context_processor

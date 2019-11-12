@@ -3,10 +3,12 @@ import math
 from datetime import datetime, timedelta
 import os
 import base64
+from hashlib import md5
 
-from flask import url_for
+from flask import url_for, current_app
 from flask_peewee.auth import BaseUser
-from peewee import Model, CharField, PostgresqlDatabase, DateTimeField
+import jwt
+from peewee import Model, CharField, TextField, PostgresqlDatabase, DateTimeField
 #from flask_peewee.db import Database
 #from flask_peewee.auth import Auth
 #import app.app_create
@@ -25,15 +27,15 @@ class PaginatedAPIMixin(object):
     @staticmethod
     def to_collection_dict(query, page, per_page, endpoint, **kwargs):
         resources = query.paginate(page, per_page)
-        total_pages = math.ceil(resources.count()/per_page)
-        resources.has_next = 1 if page < total_pages else 0
+        resources.total_pages = math.ceil(resources.count()/per_page)
+        resources.has_next = 1 if page < resources.total_pages else 0
         resources.has_prev = 1 if page > 1 else 0
         data = {
             'items': [item.to_dict() for item in resources],
             '_meta': {
                 'page': page,
                 'per_page': per_page,
-                'total_pages': total_pages,
+                'total_pages': resources.total_pages,
                 'total_items': resources.count()
             },
             '_links': {
@@ -52,27 +54,11 @@ class User(BaseModel, BaseUser, PaginatedAPIMixin):
     username = CharField()
     email = CharField()
     password_hash = CharField()
-    token = CharField(index=True, unique=True)
-    token_expiration = DateTimeField()
-
-    def get_token(self, expires_in=3600):
-        now = datetime.utcnow()
-        if self.token and self.token_expiration > now + timedelta(seconds=60):
-            return self.token
-        self.token = base64.b64encode(os.urandom(24)).decode('utf-8')
-        self.token_expiration = now + timedelta(seconds=expires_in)
-        self.save()
-        return self.token
-
-    def revoke_token(self):
-        self.token_expiration = datetime.utcnow() - timedelta(seconds=1)
-
-    @staticmethod
-    def check_token(token):
-        user = User.get_or_none(User.token==token)
-        if user is None or user.token_expiration < datetime.utcnow():
-            return None
-        return user
+    name = CharField()
+    location = CharField()
+    about_me = TextField()
+    member_since = DateTimeField(default=datetime.utcnow())
+    last_seen = DateTimeField(default=datetime.utcnow())
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -83,12 +69,24 @@ class User(BaseModel, BaseUser, PaginatedAPIMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
+    def avatar(self, size):
+        digest = md5(self.email.lower().encode('utf-8')).hexdigest()
+        return 'https://cn.gravatar.com/avatar/{}?d=http://image.antns.com/uploads/20180904/13/1536039999-UcBCsxtXgM.jpg&s={}'.format(digest, size)
+
+
     def to_dict(self, include_email=False):
         data = {
             'id': self.id,
             'username': self.username,
+            'name': self.name,
+            'location': self.location,
+            'about_me': self.about_me,
+            'member_since': self.member_since.isoformat() + 'Z',
+            'last_seen': self.last_seen.isoformat() + 'Z',
             '_links': {
-                'self': url_for('api.get_user', id=self.id)
+                'self': url_for('api.get_user', id=self.id),
+                'avatar': self.avatar(128)
             }
         }
         if include_email:
@@ -96,9 +94,36 @@ class User(BaseModel, BaseUser, PaginatedAPIMixin):
         return data
 
     def from_dict(self, data, new_user=False):
-        for field in ['username', 'email']:
+        for field in ['username', 'email', 'name', 'location', 'about_me']:
             if field in data:
                 setattr(self, field, data[field])
         if new_user and 'password' in data:
             self.set_password(data['password'])
 
+    def ping(self):
+        self.last_seen = datetime.utcnow()
+        self.save()
+
+    def get_jwt(self, expires_in=3600):
+        now = datetime.utcnow()
+        payload = {
+            'user_id': self.id,
+            'name': self.name if self.name else self.username,
+            'exp': now + timedelta(seconds=expires_in),
+            'iat': now
+        }
+        return jwt.encode(
+            payload,
+            current_app.config['SECRET_KEY'],
+            algorithm='HS256').decode('utf-8')
+
+    @staticmethod
+    def verify_jwt(token):
+        try:
+            payload = jwt.decode(
+                token,
+                current_app.config['SECRET_KEY'],
+                algorithms=['HS256'])
+        except (jwt.exceptions.ExpiredSignatureError, jwt.exceptions.InvalidSignatureError) as e:
+            return None
+        return User.get(payload.get('user_id'))
