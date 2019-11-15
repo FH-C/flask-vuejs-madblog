@@ -1,4 +1,4 @@
-	<template>
+<template>
   <div class="container">
     <h1>Edit Your Profile</h1>
     <div class="row">
@@ -24,7 +24,7 @@
 </template>
 
 <script>
-import store from '../store.js'
+import store from '../store'
 export default {
   name: 'EditProfile',  //this is the name of the component
   data () {
@@ -33,8 +33,7 @@ export default {
       profileForm: {
         name: '',
         location: '',
-        about_me: '',
-        submitted: false  // 是否点击了 submit 按钮
+        about_me: ''
       }
     }
   },

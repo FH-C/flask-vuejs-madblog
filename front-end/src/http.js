@@ -1,7 +1,9 @@
+
 import Vue from 'vue'
 import axios from 'axios'
 import router from './router'
 import store from './store'
+
 
 // 基础配置
 axios.defaults.timeout = 5000  // 超时时间
@@ -40,8 +42,18 @@ axios.interceptors.response.use(function (response) {
       }
       break
 
+    case 403:
+      Vue.toasted.error('403: Forbidden', { icon: 'fingerprint' })
+      router.back()
+      break
+
     case 404:
-      Vue.toasted.error('404: NOT FOUND', { icon: 'fingerprint' })
+      Vue.toasted.error('404: Not Found', { icon: 'fingerprint' })
+      router.back()
+      break
+
+    case 500:  // 根本拿不到 500 错误，因为 CORs 不会过来
+      Vue.toasted.error('500: Oops... INTERNAL SERVER ERROR', { icon: 'fingerprint' })
       router.back()
       break
   }

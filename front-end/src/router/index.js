@@ -5,6 +5,7 @@ import Login from '@/components/Login'
 import Register from '@/components/Register'
 import Profile from '@/components/Profile'
 import EditProfile from '@/components/EditProfile'
+import Post from '@/components/Post'
 import Ping from '@/components/Ping'
 
 import store from '../store'
@@ -16,10 +17,12 @@ const router = new Router({
     {
       path: '/',
       name: 'Home',
-      component: Home,
-      meta: {
-        requiresAuth: true
-      }
+      component: Home
+    },
+    {
+      path: '/post/:id',
+      name: 'Post',
+      component: Post
     },
     {
       path: '/login',

@@ -8,7 +8,8 @@ from hashlib import md5
 from flask import url_for, current_app
 from flask_peewee.auth import BaseUser
 import jwt
-from peewee import Model, CharField, TextField, PostgresqlDatabase, DateTimeField
+from peewee import Model, CharField, TextField, PostgresqlDatabase, DateTimeField, IntegerField
+from peewee import ForeignKeyField
 #from flask_peewee.db import Database
 #from flask_peewee.auth import Auth
 #import app.app_create
@@ -27,7 +28,7 @@ class PaginatedAPIMixin(object):
     @staticmethod
     def to_collection_dict(query, page, per_page, endpoint, **kwargs):
         resources = query.paginate(page, per_page)
-        resources.total_pages = math.ceil(resources.count()/per_page)
+        resources.total_pages = math.ceil(query.count()/per_page)
         resources.has_next = 1 if page < resources.total_pages else 0
         resources.has_prev = 1 if page > 1 else 0
         data = {
@@ -127,3 +128,40 @@ class User(BaseModel, BaseUser, PaginatedAPIMixin):
         except (jwt.exceptions.ExpiredSignatureError, jwt.exceptions.InvalidSignatureError) as e:
             return None
         return User.get(payload.get('user_id'))
+
+
+class Post(BaseModel, PaginatedAPIMixin):
+    title = CharField()
+    summary = CharField()
+    body = TextField()
+    timestamp = DateTimeField(index=True, default=datetime.utcnow())
+    views = IntegerField(default=0)
+    author = ForeignKeyField(User, backref='post', on_delete='Cascade')
+
+    def __repr__(self):
+        return '<POST {}>'.format(self.title)
+
+    def from_dict(self, data):
+        for field in ['title', 'summary', 'body']:
+            if field in data:
+                setattr(self, field, data[field])
+
+    def to_dict(self):
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'summary': self.summary,
+            'body': self.body,
+            'timestamp': self.timestamp,
+            'views': self.views,
+            'author': self.author.to_dict(),
+            '_links': {
+                'self': url_for('api.get_post', id=self.id),
+                'author_url': url_for('api.get_user', id=self.author_id)
+            }
+        }
+        return data
+
+
+if __name__ == '__main__':
+    db.create_tables([Post, User])

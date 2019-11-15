@@ -1,4 +1,4 @@
-	export default {
+export default {
   debug: true,
   state: {
     is_authenticated: window.localStorage.getItem('madblog-token') ? true : false,
