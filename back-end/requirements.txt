@@ -11,7 +11,7 @@ chardet==3.0.4
 Click==7.0
 config==0.4.2
 constantly==15.1.0
-cryptography==2.8
+cryptography==3.2
 cssselect==1.1.0
 dominate==2.4.0
 Flask==1.1.1
