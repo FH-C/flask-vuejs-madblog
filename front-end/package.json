@@ -15,7 +15,7 @@
     "cache-loader": "^4.1.0",
     "core-js": "^3.3.2",
     "css-loader": "^3.2.0",
-    "highlight.js": "^9.16.2",
+    "highlight.js": "^10.1.2",
     "jquery": "^3.4.1",
     "linkify-it": "^2.2.0",
     "markdown-it": "^10.0.0",
