@@ -75,7 +75,7 @@ service-identity==18.1.0
 six==1.13.0
 SQLAlchemy==1.3.10
 Twisted==19.7.0
-urllib3==1.25.6
+urllib3==1.26.5
 visitor==0.1.3
 w3lib==1.21.0
 webencodings==0.5.1
